@@ -5,6 +5,11 @@
 As a student, I often wanted to install external nix packages, but had to install them on every machine change/reboot.
 As such, I wanted to make a tool that could fix this problem and serve as a dotfiles manager for EPITA computers
 
+## Features
+- Install packages (and keep them between reboots)
+- (TODO) Backup dotfiles
+- (TODO) Group files, and create variants (useful for styling, or profiles)
+
 ## Requirements
 - A Git repository hosted on a distant server (github is fine, and even recommended)
 

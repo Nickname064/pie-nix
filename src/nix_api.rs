@@ -13,8 +13,8 @@ pub fn require_nix() -> bool {
     }
 }
 
-pub fn install_packages(packages: &Vec<String>) -> bool {
-    let child = Command::new("nix profile install").args(packages).spawn();
+pub fn install_package(pkg: &str) -> bool {
+    let child = Command::new("nix").args(vec!["profile", "install", pkg]).spawn();
 
     match child {
         Ok(mut process) => match process.wait() {
@@ -25,8 +25,8 @@ pub fn install_packages(packages: &Vec<String>) -> bool {
     }
 }
 
-pub fn remove_packages(packages: &Vec<String>) -> bool {
-    let child = Command::new("nix profile remove").args(packages).spawn();
+pub fn remove_package(packages: &str) -> bool {
+    let child = Command::new("nix profile remove").arg(packages).spawn();
 
     match child {
         Ok(mut process) => match process.wait() {

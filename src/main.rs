@@ -5,7 +5,7 @@ use std::{
 };
 
 use clap::{Parser, Subcommand};
-use nix_api::{install_packages, remove_packages};
+use nix_api::{install_package, remove_package};
 
 mod nix_api;
 
@@ -69,7 +69,7 @@ fn main() {
         match std::fs::create_dir_all(&config_directory) {
             Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {}
             Ok(_) => {}
-            Err(e) => {
+            Err(_) => {
                 panic!(
                     "Couldn't create a configuration directory at {:?}. Aborting...",
                     config_directory
@@ -87,12 +87,16 @@ fn main() {
     let cli = Cli::parse();
     match &cli.command {
         Commands::Install { packages, .. } => {
-            println!("Trying to install {:?}", packages);
-            println!("Install results : {}", install_packages(packages));
+            for package in packages{
+                if install_package(package) {
+                    println!("Installed {}", package);
+                } else {
+                    println!("Failed to install {}", package);
+                }
+            }
         }
         Commands::Remove { packages, .. } => {
             println!("Trying to remove {:?}", packages);
-            println!("Install results : {}", remove_packages(packages));
         }
         Commands::Recover {} => {
             println!("I am reinstalling the packages");

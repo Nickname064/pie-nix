@@ -47,12 +47,19 @@ enum Commands {
 
     /// List managed packages
     ListPackages {},
+
+    SetInstallOrder {},
 }
 
 fn main() {
+    // Get path to home $HOME
+    let home_string = std::env::var("HOME")
+        .expect("Home directory unset. Are you running pie-nix from the right user ?");
+
+    let home_dir = PathBuf::from_str(&home_string).expect("Error opening HOME directory");
+
     //Parse config directory
-    let config_directory: PathBuf =
-        PathBuf::from_str("~/.pie-nix").expect("PIE-NIX should only run on linux");
+    let config_directory: PathBuf = Path::join(&home_dir, ".pie-nix");
     let pkgs_file: PathBuf = Path::join(&config_directory, "pkgs.pnix");
 
     //Every string is a package name.
@@ -71,6 +78,7 @@ fn main() {
         }
     }
 
+    // List of packages to install
     pkgs_data = match std::fs::read_to_string(pkgs_file) {
         Err(_) => vec![],
         Ok(s) => s.lines().map(|x| String::from(x)).collect(),
@@ -90,6 +98,12 @@ fn main() {
             println!("I am reinstalling the packages");
             todo!("Parse the config folder, and reinstall every package in it");
         }
-        Commands::ListPackages {} => {}
+        Commands::ListPackages {} => {
+            todo!("List packages here")
+        }
+
+        Commands::SetInstallOrder {} => {
+            todo!("Menu to config in which order to install")
+        }
     }
 }

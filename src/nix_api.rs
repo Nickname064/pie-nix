@@ -35,7 +35,7 @@ pub fn install_package(package: &str) -> bool {
 
 pub fn remove_package(package: &str) -> bool {
     let child = Command::new("nix")
-        .args(vec!["profile", "install", package])
+        .args(vec!["profile", "remove", package])
         .stderr(Stdio::inherit())
         .stdout(Stdio::inherit())
         .spawn();

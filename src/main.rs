@@ -3,7 +3,9 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
+use std::collections::{HashMap, HashSet};
 use std::io::stdout;
+use std::ops::Add;
 use std::process::exit;
 use clap::{Parser, Subcommand};
 use crossterm::cursor::{MoveDown, MoveUp};
@@ -34,6 +36,16 @@ enum Commands {
         /// If specified, the aforementioned packages will not be auto-logged, and will not be reinstalled next boot
         #[arg(short, long)]
         temp: bool,
+
+        /// If specified, will register the packages in all specified distros.
+        /// Negated by --temp
+        #[arg(short, long)]
+        distros: Option<Vec<String>>,
+
+        /// The install priority for the provided packages
+        /// Packages with higher priority will be installed first
+        #[arg(short, long, required = false)]
+        priority: Option<u64>
     },
 
     /// Uninstall one or more packages
@@ -46,13 +58,27 @@ enum Commands {
         /// reinstalled next boot
         #[arg(short, long)]
         temp: bool,
+
+        /// If specified, will register the packages in all specified distros.
+        /// Negated by --temp
+        #[arg(short, long, required = false)]
+        distros: Option<Vec<String>>
     },
 
     /// Reinstall packages at boot
-    Reload {},
+    Reload {
+        /// If specified, will only reinstall the packages from the provided distros
+        #[arg(short, long, required = false)]
+        distros: Option<Vec<String>>,
+    },
 
     /// List managed packages
-    ListPackages {},
+    ListPackages {
+
+        /// If specified, will only list packages from the provided distros
+        #[arg(short, long, required = false)]
+        distros: Option<Vec<String>>,
+    },
 
     // Choose in which order pie-nix reload will install the packages
     //SetInstallOrder {},
@@ -60,10 +86,15 @@ enum Commands {
 
 #[derive(Serialize, Deserialize)]
 struct SavedData {
-    packages: Vec<String>
+    /// (distro, (package, priority)[])
+    packages: HashMap<String, Vec<(String, u64)>>
 }
 
 fn main() {
+
+    const DEFAULT_PRIORITY : u64 = 0;
+    const DEFAULT_DISTRO : &'static str = "default";
+
     // Get path to home $HOME
     let home_string = std::env::var("HOME")
         .expect("Home directory unset. Are you running pie-nix from the right user ?");
@@ -81,7 +112,7 @@ fn main() {
         Ok(data) => { if let Ok(recovered) = serde_json::from_str::<SavedData>(&data) { recovered }
             else { eprintln!("Couldn't read package data from {}. Your file might be corrupt", &pkgs_file.to_string_lossy()); exit(1); }
         }
-        Err(_) => { SavedData { packages : vec![] } }
+        Err(_) => { SavedData { packages : HashMap::new() } }
     };
 
     if !config_directory.exists() {
@@ -99,82 +130,106 @@ fn main() {
 
     let cli = Cli::parse();
     match &cli.command {
-        Commands::Install { packages, temp } => {
+        Commands::Install { packages, temp, distros, priority } => {
 
+            if !require_nix(){
+                eprintln!("Nix is not installed. Are you running on the PIE ?");
+                exit(1);
+            }
+
+            let used_priority = priority.unwrap_or(DEFAULT_PRIORITY);
+            let used_distros = match distros{
+                Some(d) => { d }
+                None => { &vec![String::from(DEFAULT_DISTRO)] }
+            };
+
+            let mut to_log = HashSet::new();
+
+            for package in packages {
+                if !install_package(package) { continue; } //Don't log packages whose installation failed
+                if *temp { continue; } //Skip installed, and don't log temp packages
+
+                to_log.insert(package);
+            }
+
+            for distro in used_distros {
+                // Contains corresponding set, or the empty set if no set exists
+                let mut set = save_data.packages.insert(distro.clone(), vec![]).unwrap_or_default();
+
+                for package in packages {
+                    set = set.into_iter().filter(|(name, priority)| name != package).collect();
+                    set.push((package.clone(), used_priority))
+                }
+
+                save_data.packages.insert(distro.clone(), set);
+            }
+        }
+        Commands::Remove { packages, temp, distros} => {
             if !require_nix(){
                 eprintln!("Nix is not installed. Are you running on the PIE ?");
                 exit(1);
             }
 
             for package in packages {
-                if !install_package(package) { continue; } //Don't log packages whose installation failed
-                if *temp || save_data.packages.contains(package){ continue; } //Skip installed, and don't log temp packages
-                save_data.packages.push(package.clone()); //Add to packages
-            }
-        }
-        Commands::Remove { packages, temp } => {
-            if !require_nix(){
-                eprintln!("Nix is not installed. Are you running on the PIE ?");
-                exit(1);
+                remove_package(package);
             }
 
-            for package in packages{
-                if !remove_package(package) { continue; } //Don't log broken package removal
-                if *temp { continue; } //Don't log temporary removal
-                save_data.packages = save_data.packages.iter().filter(|&x| x != package).map(|x| x.clone()).collect();
-            }
-        }
-        Commands::Reload {} => {
-            if !require_nix(){
-                eprintln!("Nix is not installed. Are you running on the PIE ?");
-                exit(1);
-            }
+            if !temp {
+                if let Some(distro_vec) = distros {
+                    for distro in distro_vec {
+                        let mut set = save_data.packages.insert(distro.clone(), vec![]).unwrap_or_default();
 
-            for package in &save_data.packages {
-                install_package(package);
-            }
-        }
-        Commands::ListPackages {} => {
-            for package in &save_data.packages {
-                println!("{}", package);
-            }
-        }
+                        // Remove packages
+                        set = set.into_iter().filter(|(name, _)| !packages.contains(name)).collect();
 
-        /*
-        Commands::SetInstallOrder {} => {
-
-            todo!("Make setinstallorder command");
-
-            crossterm::execute!(stdout(), EnterAlternateScreen);
-            crossterm::execute!(stdout(), Clear(ClearType::All));
-
-
-            for package in save_data.packages {
-                println!("\t{}", package);
-            }
-
-            if event::poll(std::time::Duration::from_millis(100)).expect("Couldn't poll events") {
-                if let Event::Key(key) = event::read().unwrap(){
-                    match key.code {
-                        KeyCode::Up => {
-                            crossterm::execute!(stdout(), MoveUp(1));
-                        }
-                        KeyCode::Down => {
-                            crossterm::execute!(stdout(), MoveDown(1));
-                        }
-                        _ => {}
+                        save_data.packages.insert(distro.clone(), set);
                     }
                 }
             }
-
-            loop {
-
-
+        }
+        Commands::Reload { distros } => {
+            if !require_nix(){
+                eprintln!("Nix is not installed. Are you running on the PIE ?");
+                exit(1);
             }
 
-            crossterm::execute!(stdout(), LeaveAlternateScreen);
+            let mut to_install = vec![];
+
+            let d = distros.clone().unwrap_or(save_data.packages.keys().map(|x| x.clone()).collect());
+
+            // Retrieve packages from distros
+            for distro in d {
+                if let Some(contents) = save_data.packages.get(&distro) {
+                    to_install.extend(contents);
+                }
+            }
+
+
+            // Sort before installing
+            to_install.sort_by_key(|(_, p)| p );
+
+
+            // Install
+            for (package, _) in &to_install {
+                install_package(package);
+            }
         }
-        */
+        Commands::ListPackages { distros } => {
+
+            let d = distros.clone().unwrap_or(save_data.packages.keys().map(|x| x.clone()).collect());
+
+
+
+            for distro in d {
+                if let Some(contents) = save_data.packages.get(&distro) {
+                    println!("===== Distro : {}", distro);
+                    if let Some(contents) = save_data.packages.get(&distro) {
+                        contents.iter().for_each(|(name, priority)| println!("{}, priority : {}", name, priority));
+                    }
+                    println!();
+                }
+            }
+        }
     }
 
     // Save data to ~/.pie-nix/pkgs.pnix

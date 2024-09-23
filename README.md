@@ -26,9 +26,9 @@ Since you're working on a EPITA machine, you should move it to a persistent fold
 I personnaly have a special folder just for my executables, in /afs/bin, symlinked to be accessible from ~/.bin
 
 ```bash
-  mkdir ~/afs/bin
-  ln -snf ~/afs/bin ~/.bin
-  mv ./pie-nix ~/afs/bin
+  mkdir ~/afs/.bin
+  ln -snf ~/afs/.bin ~/.bin
+  mv ./pie-nix ~/afs/.bin
 ```
 
 If you have such a directory, make sure to include it in your `PATH` environment variable.
@@ -36,7 +36,7 @@ To do so, just add the following lines to your .bashrc (which can be found at `~
 
 ```bash
 # Replace ~/afs/bin with the path to your directory for custom binaries
-export PATH=~/afs/bin:$PATH
+export PATH=~/afs/.bin:$PATH
 ```
 
 ## Usage

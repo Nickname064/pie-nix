@@ -33,14 +33,14 @@ Si vous voulez faire de même, pensez à l'ajouter à votre `$PATH`.
 Créer un dossier `.bin` :
 ```bash
   mkdir ~/afs/.bin
-  ln -snf ~/afs/bin ~/.bin
+  ln -snf ~/afs/.bin ~/.bin
   mv ./pie-nix ~/afs/.bin
 ```
 
 Ajouter le dossier à votre `$PATH`: (mettez les lignes suivantes dans votre `~/.bashrc`)
 ```bash
 # Replace ~/afs/bin with the path to your directory for custom binaries
-export PATH=~/afs/bin:$PATH
+export PATH=~/afs/.bin:$PATH
 ```
 
 ## Usage

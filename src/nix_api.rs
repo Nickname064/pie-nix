@@ -2,7 +2,11 @@ use std::process::{Command, Stdio};
 
 /// Returns true if the `nix` command can be run correctly
 pub fn require_nix() -> bool {
-    let child = Command::new("which nix").spawn();
+
+    let child = Command::new("which")
+        .args(vec!["nix"])
+        .stdout(Stdio::null())
+        .spawn();
 
     match child {
         Ok(mut process) => match process.wait() {

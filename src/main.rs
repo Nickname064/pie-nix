@@ -54,8 +54,8 @@ enum Commands {
     /// List managed packages
     ListPackages {},
 
-    /// Choose in which order pie-nix reload will install the packages
-    SetInstallOrder {},
+    // Choose in which order pie-nix reload will install the packages
+    //SetInstallOrder {},
 }
 
 #[derive(Serialize, Deserialize)]
@@ -69,10 +69,12 @@ fn main() {
         .expect("Home directory unset. Are you running pie-nix from the right user ?");
 
     let home_dir = PathBuf::from_str(&home_string).expect("Error opening HOME directory");
+    let afs_dir = Path::join(&home_dir, "afs");
 
     //Parse config directory
-    let config_directory: PathBuf = Path::join(&home_dir, ".pie-nix");
+    let config_directory: PathBuf = Path::join(&afs_dir, ".pie-nix");
     let pkgs_file: PathBuf = Path::join(&config_directory, "pkgs.pnix");
+
 
     // Recover saved data
     let mut save_data = match std::fs::read_to_string(&pkgs_file) {
@@ -138,6 +140,7 @@ fn main() {
             }
         }
 
+        /*
         Commands::SetInstallOrder {} => {
 
             todo!("Make setinstallorder command");
@@ -171,9 +174,8 @@ fn main() {
 
             crossterm::execute!(stdout(), LeaveAlternateScreen);
         }
+        */
     }
-
-    save_data.packages = vec![String::from("a"), String::from("b"), String::from("c")];
 
     // Save data to ~/.pie-nix/pkgs.pnix
     if let Err(_) = std::fs::write(&pkgs_file, serde_json::to_string(&save_data).unwrap().into_bytes()) {

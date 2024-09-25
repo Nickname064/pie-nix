@@ -139,8 +139,8 @@ fn main() {
 
             let used_priority = priority.unwrap_or(DEFAULT_PRIORITY);
             let used_distros = match distros{
-                Some(d) => { d }
-                None => { &vec![String::from(DEFAULT_DISTRO)] }
+                Some(d) => { d.clone() }
+                None => { vec![String::from(DEFAULT_DISTRO)] }
             };
 
             let mut to_log = HashSet::new();

@@ -59,7 +59,9 @@ Si vous souhaitez chercher des `flakes` NixOS valides, veuillez vous référer �
 __Note(2)__: Cette commande installe un paquet localement, et en prend note de sorte à pouvoir le réinstaller automatiquement au prochain démarrage.
 
 - Si vous voulez juste essayer un paquet, sans qu'il soit enregistré (et que vous ne souhaitez pas utiliser `nix profile install` ou `nix-shell -p`), vous pouvez utiliser `pie-nix install [paquet] --temp`
-- Enfin, si vous voulez désinstaller un paquet, utilisez `pie-nix remove [paquet]` (Vous pouvez aussi l'enlever temporairement en utilisant `--temp`)
+- Enfin, si vous voulez désinstaller un paquet, utilisez `pie-nix remove [paquet]`
+
+__Note(3)__: Enlever un paquet avec `pie-nix` ne le desinstalle pas, mais l'enleve des logs de sorte a ce qu'il ne soit pas reinstalle au prochain boot
 
 #### Priorités d'installations
 

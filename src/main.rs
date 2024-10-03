@@ -4,14 +4,8 @@ use std::{
     str::FromStr,
 };
 use std::collections::{HashMap, HashSet};
-use std::io::stdout;
-use std::ops::Add;
 use std::process::exit;
 use clap::{Parser, Subcommand};
-use crossterm::cursor::{MoveDown, MoveUp};
-use crossterm::event;
-use crossterm::event::{Event, KeyCode};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
 use serde::{Deserialize, Serialize};
 use crate::nix_api::{install_package, remove_package, require_nix};
 
@@ -40,7 +34,7 @@ enum Commands {
         /// If specified, will register the packages in all specified distros.
         /// Negated by --temp
         #[arg(short, long)]
-        distros: Option<Vec<String>>,
+        distros: Vec<String>,
 
         /// The install priority for the provided packages
         /// Packages with higher priority will be installed first
@@ -48,40 +42,25 @@ enum Commands {
         priority: Option<u64>
     },
 
-    /// Uninstall one or more packages
     Remove {
         /// A list of packages to remove
         #[arg()]
         packages: Vec<String>,
 
-        /// If specified, this removal will not be auto-logged, and the packages will be
-        /// reinstalled next boot
-        #[arg(short, long)]
-        temp: bool,
-
         /// If specified, will register the packages in all specified distros.
-        /// Negated by --temp
         #[arg(short, long, required = false)]
-        distros: Option<Vec<String>>
+        distros: Vec<String>
     },
 
     /// Reinstall packages at boot
     Reload {
-        /// If specified, will only reinstall the packages from the provided distros
-        #[arg(short, long, required = false)]
-        distros: Option<Vec<String>>,
+        distros: Vec<String>,
     },
 
     /// List managed packages
     ListPackages {
-
-        /// If specified, will only list packages from the provided distros
-        #[arg(short, long, required = false)]
-        distros: Option<Vec<String>>,
+        distros: Vec<String>,
     },
-
-    // Choose in which order pie-nix reload will install the packages
-    //SetInstallOrder {},
 }
 
 #[derive(Serialize, Deserialize)]
@@ -138,9 +117,9 @@ fn main() {
             }
 
             let used_priority = priority.unwrap_or(DEFAULT_PRIORITY);
-            let used_distros = match distros{
-                Some(d) => { d.clone() }
-                None => { vec![String::from(DEFAULT_DISTRO)] }
+            let used_distros = match distros.len() {
+                0 => { vec![String::from(DEFAULT_DISTRO)] }
+                _ => { distros.clone() }
             };
 
             let mut to_log = HashSet::new();
@@ -164,27 +143,16 @@ fn main() {
                 save_data.packages.insert(distro.clone(), set);
             }
         }
-        Commands::Remove { packages, temp, distros} => {
-            if !require_nix(){
-                eprintln!("Nix is not installed. Are you running on the PIE ?");
-                exit(1);
-            }
+        Commands::Remove { packages,  distros} => {
 
-            for package in packages {
-                remove_package(package);
-            }
+            let distro_vec = if distros.len() != 0 { distros.clone() } else { save_data.packages.keys().map(|x| x.clone()).collect() };
+            for distro in distro_vec {
+                let mut set = save_data.packages.insert(distro.clone(), vec![]).unwrap_or_default();
 
-            if !temp {
-                if let Some(distro_vec) = distros {
-                    for distro in distro_vec {
-                        let mut set = save_data.packages.insert(distro.clone(), vec![]).unwrap_or_default();
+                // Remove packages
+                set = set.into_iter().filter(|(name, _)| !packages.contains(name)).collect();
 
-                        // Remove packages
-                        set = set.into_iter().filter(|(name, _)| !packages.contains(name)).collect();
-
-                        save_data.packages.insert(distro.clone(), set);
-                    }
-                }
+                save_data.packages.insert(distro.clone(), set);
             }
         }
         Commands::Reload { distros } => {
@@ -195,7 +163,7 @@ fn main() {
 
             let mut to_install = vec![];
 
-            let d = distros.clone().unwrap_or(save_data.packages.keys().map(|x| x.clone()).collect());
+            let d = if distros.len() != 0 { distros.clone() } else { save_data.packages.keys().map(|x| x.clone()).collect() };
 
             // Retrieve packages from distros
             for distro in d {
@@ -216,9 +184,7 @@ fn main() {
         }
         Commands::ListPackages { distros } => {
 
-            let d = distros.clone().unwrap_or(save_data.packages.keys().map(|x| x.clone()).collect());
-
-
+            let d = if distros.len() != 0 { distros.clone() } else { save_data.packages.keys().map(|x| x.clone()).collect() };
 
             for distro in d {
                 if let Some(contents) = save_data.packages.get(&distro) {

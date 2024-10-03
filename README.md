@@ -61,7 +61,9 @@ __Note(2)__: This command installs a package locally, and keeps record of it so 
 
 - Finally, if you would like to uninstall a package, use
 `pie-nix remove [package_name]`
-(You can also remove it temporarily by using `--temp`)
+
+__Note(3)__: Due to limitations, removing a package via pie-nix doesnt uninstall it,
+it just won't reinstall it at the next boot
 
 #### Install priorities
 You can also specify in which order you would like the packages to be installed.

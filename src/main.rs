@@ -24,10 +24,11 @@ enum Commands {
     /// Install one or more packages
     Install {
         /// A list of packages to install
-        #[arg()]
+        #[arg(required = true, num_args = 1)]
         packages: Vec<String>,
 
         /// If specified, the aforementioned packages will not be auto-logged, and will not be reinstalled next boot
+        /// Negates --distros
         #[arg(short, long)]
         temp: bool,
 
@@ -44,7 +45,7 @@ enum Commands {
 
     Remove {
         /// A list of packages to remove
-        #[arg()]
+        #[arg(required = true, num_args = 1)]
         packages: Vec<String>,
 
         /// If specified, will register the packages in all specified distros.
@@ -61,6 +62,17 @@ enum Commands {
     ListPackages {
         distros: Vec<String>,
     },
+
+    /*
+    ConfigSet {
+
+        // The distros you should apply this setting to
+        distros: Vec<String>,
+
+        variable: String,
+        value: String
+    }
+    */
 }
 
 #[derive(Serialize, Deserialize)]
